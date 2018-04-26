@@ -1,12 +1,15 @@
 #define MOTOR_A 9
-#define MOTOR_B 8
+#define MOTOR_B 10
 #define ENCODER_A_A 2
 #define ENCODER_A_B 5 //not used
-#define MOTOR_A_D 10  //not used
+#define MOTOR_A_D 8
 #define ENCODER_B_A 3
-#define ENCODER_B_B 6
+#define ENCODER_B_B 6 //not used
+#define MOTOR_B_D 12
 #define SPEEDA A0
-#define SPEEDB A1
+#define SPEEDB A1 //not used
+
+#define MAX_SPEED 20
 
 
 //double setPoint = 15;
@@ -51,10 +54,12 @@ void setup() {
   pinMode(ENCODER_A_A, INPUT);
   pinMode(ENCODER_A_B, INPUT);
   pinMode(SPEEDA, INPUT);
-  attachInterrupt(0,readEncoderA,CHANGE);
-  attachInterrupt(1,readEncoderB,CHANGE);
-  initial = digitalRead(ENCODER_A_A);
-  Serial.println(initial);
+  attachInterrupt(digitalPinToInterrupt(2),readEncoderA,CHANGE);
+  attachInterrupt(digitalPinToInterrupt(3),readEncoderB,CHANGE);
+  //initial = digitalRead(ENCODER_A_A);
+  digitalRead(ENCODER_A_A);
+  digitalRead(ENCODER_A_B);
+  //Serial.println(initial);
   //Serial.println(digitalRead(ENCODER_A_B));
   Serial.println("Start");
   previousTimeA = millis();
@@ -72,11 +77,15 @@ void loop() {
   //analogWrite(MOTOR_A,50);
   delay(500);
   //getSpeedA();
+  //getSpeedB();
   PIDA();
-
- PIDB();
   
-
+  PIDB();
+  //Serial.print("A: ");
+  //Serial.print(countA);
+  //Serial.print(" B: ");
+  //Serial.println(countB);
+  
 }
 
 void readEncoderA()
@@ -157,7 +166,18 @@ double getSpeedA()
 double getSpeedB()
 {
   unsigned long time = millis();
-  return 0;
+  //Serial.print("CountB: ");
+  //Serial.println(countB);
+  unsigned long currentCount = countB;
+  double currentSpeed = (double) (currentCount-previousCountB)/(double)(time - previousTimeB);
+  currentSpeed = currentSpeed*1000*60/24/227;
+  previousTimeB = time;
+  previousCountB = currentCount;
+
+  //Serial.print(" speed: ");
+  //Serial.println(currentSpeed);
+  
+  return currentSpeed;
 }
 
 int constrainPWM( int pwm)
@@ -172,16 +192,16 @@ int constrainPWM( int pwm)
 double readSetPointA()
 {
   double setPoint = 0;
-  Serial.print(analogRead(SPEEDA));
-  setPoint = (double)analogRead(SPEEDA)/1024*10;
+  //Serial.print(analogRead(SPEEDA));
+  setPoint = (double)analogRead(SPEEDA)/1024*MAX_SPEED;
   return setPoint;
 }
 
 double readSetPointB()
 {
   double setPoint = 0;
-  Serial.print(analogRead(SPEEDB));
-  setPoint = (double)analogRead(SPEEDB)/1024*10;
+  //Serial.print(analogRead(SPEEDA));
+  setPoint = (double)analogRead(SPEEDA)/1024*MAX_SPEED;  //when speedB setpoint is not set
   return setPoint;
 }
 
@@ -190,7 +210,7 @@ void PIDA()
   
   double speed = getSpeedA(); // motor control returns vector speed
   Serial.print("SpeedA: ");
-  Serial.println(speed);
+  Serial.print(speed);
   if (speed < 0) speed *= -1;  // convert speed to scalar
   //Serial.print("Error: ");
   double setPoint = readSetPointA();
@@ -214,13 +234,13 @@ void PIDB()
   
   double speed = getSpeedB(); // motor control returns vector speed
   Serial.print("SpeedB: ");
-  Serial.println(speed);
+  Serial.print(speed);
   if (speed < 0) speed *= -1;  // convert speed to scalar
   //Serial.print("Error: ");
   double setPoint = readSetPointB();
   Serial.print(" SetPointB: ");
   Serial.print(setPoint);
-  double error = setPoint - speed;  // calculate error
+  double error = (double) (setPoint - speed);  // calculate error
   //Serial.print(error);
   iTermB += (kIB * error); // calculate integral term
   double dInput = speed - lastSpeedB; // calculate derivative
@@ -231,6 +251,6 @@ void PIDB()
   Serial.println(pwmB);
   analogWrite(MOTOR_B,pwmB);
   //set motor
-  lastSpeedA = speed;
+  lastSpeedB = speed;
 }
 
